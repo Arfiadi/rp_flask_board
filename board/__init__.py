@@ -1,19 +1,28 @@
 import os
-from dotenv import load_dotenv
 from flask import Flask
 
-from board import pages, posts, database
+def create_app(test_config=None):
+    app = Flask(__name__, instance_relative_config=True)
+    app.config.from_mapping(
+        SECRET_KEY='dev',
+        FLASK_DATABASE=os.path.join(app.instance_path, 'board.sqlite'),
+    )
+    
+    if test_config is None:
+        app.config.from_pyfile('config.py', silent=True)
+    else:
+        app.config.from_mapping(test_config)
+    
+    try:
+        os.makedirs(app.instance_path)
+    except OSError:
+        pass
 
-load_dotenv()
-
-def create_app():
-    app = Flask(__name__)
-    app.config.from_prefixed_env()
-
-    database.init_app(app)
+    from . import pages, posts, database
 
     app.register_blueprint(pages.bp)
     app.register_blueprint(posts.bp)
-    print(f"Current Environment: {os.getenv('ENVIRONMENT')}")
-    print(f"Using Database: {app.config.get('DATABASE')}")
+
+    database.init_app(app)
+
     return app
