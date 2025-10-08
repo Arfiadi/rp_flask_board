@@ -1,5 +1,12 @@
-from flask import Blueprint, redirect, render_template, request, url_for
-from board.database import get_db
+from flask import (
+    Blueprint,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
+from board.database import get_pg_db_conn
+import psycopg2
 
 bp = Blueprint("posts", __name__)
 
@@ -10,20 +17,23 @@ def create():
         message = request.form["message"]
 
         if message:
-            db = get_db()
-            db.execute(
-                "INSERT INTO post (author, message) VALUES (?, ?)",
+            conn = get_pg_db_conn()
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO post (author, message) VALUES (%s, %s)",
                 (author, message),
             )
-            db.commit()
+            conn.commit()
+            cur.close()
             return redirect(url_for("posts.posts"))
 
     return render_template("posts/create.html")
 
 @bp.route("/posts")
 def posts():
-    db = get_db()
-    posts = db.execute(
-        "SELECT author, message, created FROM post ORDER BY created DESC"
-    ).fetchall()
+    conn = get_pg_db_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT author, message, created FROM post ORDER BY created DESC")
+    posts = cur.fetchall()
+    cur.close()
     return render_template("posts/posts.html", posts=posts)
